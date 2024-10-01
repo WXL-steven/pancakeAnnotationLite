@@ -1,0 +1,182 @@
+import 'package:flutter/material.dart';
+
+void main() => runApp(MyApp());
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: PolygonInteractionDemo(),
+    );
+  }
+}
+
+class PolygonInteractionDemo extends StatefulWidget {
+  @override
+  _PolygonInteractionDemoState createState() => _PolygonInteractionDemoState();
+}
+
+class _PolygonInteractionDemoState extends State<PolygonInteractionDemo>
+    with SingleTickerProviderStateMixin {
+  String hoveredPolygon = '';
+  AnimationController? _controller;
+  Animation<double>? _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller!);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('多边形悬停动画示例'),
+      ),
+      body: Center(
+        child: SizedBox(
+          width: 640,
+          height: 640,
+          child: Stack(
+            children: [
+              AnimatedBuilder(
+                animation: _animation!,
+                builder: (context, child) {
+                  return CustomPaint(
+                    size: Size(640, 640),
+                    painter: PolygonPainter(
+                      hoveredPolygon: hoveredPolygon,
+                      animationValue: _animation!.value,
+                    ),
+                  );
+                },
+              ),
+              MouseRegion(
+                onHover: (details) {
+                  Offset position = details.localPosition;
+                  String newHoveredPolygon = '';
+                  for (var polygon in polygons) {
+                    if (polygon.path.contains(position)) {
+                      newHoveredPolygon = polygon.name;
+                      break;
+                    }
+                  }
+                  if (newHoveredPolygon != hoveredPolygon
+                      && _controller?.status != AnimationStatus.reverse) {
+                    if (newHoveredPolygon != '') {
+                      setState(() {
+                        hoveredPolygon = newHoveredPolygon;
+                      });
+                      _controller?.forward(from: 0.0);
+                    } else {
+                      _controller?.reverse();
+                      _controller?.addStatusListener(
+                        (status) {
+                          if (status == AnimationStatus.dismissed) {
+                            setState(() {
+                              hoveredPolygon = '';
+                            });
+                          }
+                        },
+                      );
+                    }
+                  }
+                },
+                onExit: (_) {
+                  setState(() {
+                    hoveredPolygon = '';
+                  });
+                  _controller?.reverse();
+                },
+                child: Container(),
+              ),
+              Positioned(
+                left: 0,
+                bottom: 0,
+                child: AnimatedBuilder(
+                  animation: _animation!,
+                  builder: (context, child) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Hovered Polygon: $hoveredPolygon"),
+                        Text("Animation Value: ${_animation!.value.toStringAsFixed(2)}"),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class Polygon {
+  final String name;
+  final List<Offset> points;
+  late final Path path;
+
+  Polygon(this.name, this.points) {
+    path = Path()..addPolygon(points, true);
+  }
+}
+
+final List<Polygon> polygons = [
+  Polygon('三角形', [Offset(100, 100), Offset(200, 100), Offset(150, 200)]),
+  Polygon('矩形', [Offset(300, 300), Offset(400, 300), Offset(400, 400), Offset(300, 400)]),
+  Polygon('五边形', [Offset(500, 100), Offset(550, 150), Offset(530, 200), Offset(470, 200), Offset(450, 150)]),
+];
+
+class PolygonPainter extends CustomPainter {
+  final String hoveredPolygon;
+  final double animationValue;
+
+  PolygonPainter({required this.hoveredPolygon, required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final overlayPaint = Paint()..color = Colors.black.withOpacity(0.7 * animationValue);
+    final clearPaint = Paint()..blendMode = BlendMode.clear;
+    final borderPaint = Paint()
+      ..color = Colors.blue.withOpacity(1.0 - animationValue)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    // 绘制半透明的覆盖层
+    canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
+    if (hoveredPolygon != '') {
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), overlayPaint);
+    }
+
+    for (var polygon in polygons) {
+      if (polygon.name == hoveredPolygon) {
+        // 清除悬停多边形区域的覆盖层
+        canvas.drawPath(polygon.path, clearPaint);
+      }
+      // 绘制多边形边框
+      canvas.drawPath(polygon.path, borderPaint);
+    }
+
+    // 恢复画布
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
