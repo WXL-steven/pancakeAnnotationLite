@@ -245,6 +245,8 @@ class AnnotationData with ChangeNotifier {
   void snapshotSelectingAnnotation() {
     if (_selectedAnnotation == null) return;
 
+    if (!_selectedAnnotation!.valid) return;
+
     // 完成快照
     editHistory.finishSnapshot(_selectedAnnotation!);
 

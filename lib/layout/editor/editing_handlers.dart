@@ -334,11 +334,12 @@ class BBoxEditingHandler extends EditingHandlerModel {
 
   @override
   void onHoverExit() {
-    mode = BBoxEditingMode.block;
-    editingNodeIndex = -1;
-    editingLineIndex = -1;
-    editingBBox = null;
-    scaleFrom = null;
+    // mode = BBoxEditingMode.block;
+    // editingNodeIndex = -1;
+    // editingLineIndex = -1;
+    // editingBBox = null;
+    // scaleFrom = null;
+    return;
   }
 
   @override
